@@ -27,17 +27,19 @@ if(INSTALL_SCRIPT)
     find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
         Package
     )
-    set(SCRIPT_PACKAGE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/package)
+    # relative to the source dir: older KPackage macros prepend it
+    set(SCRIPT_PACKAGE_DIR package)
     if(BUILD_PLUGIN AND NOT KDE_INSTALL_USE_QT_SYS_PATHS)
         # KWin looks the settings module up relative to the Qt plugin paths, which
         # don't include a user prefix like ~/.local: point it to the installed file
-        set(SCRIPT_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/package)
-        file(REMOVE_RECURSE ${SCRIPT_PACKAGE_DIR})
+        set(GENERATED_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/package)
+        file(REMOVE_RECURSE ${GENERATED_PACKAGE_DIR})
         file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/package DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
         string(JSON METADATA SET ${METADATA} "X-KDE-ConfigModule"
             "\"${KDE_INSTALL_FULL_PLUGINDIR}/kwin/scripts/configs/kcm_close2tray\"")
-        file(WRITE ${SCRIPT_PACKAGE_DIR}/metadata.json ${METADATA})
+        file(WRITE ${GENERATED_PACKAGE_DIR}/metadata.json ${METADATA})
         set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/package/metadata.json)
+        file(RELATIVE_PATH SCRIPT_PACKAGE_DIR ${CMAKE_CURRENT_SOURCE_DIR} ${GENERATED_PACKAGE_DIR})
     endif()
     kpackage_install_package(${SCRIPT_PACKAGE_DIR} ${PLUGIN_ID} scripts kwin)
 endif()

@@ -29,6 +29,18 @@ Build an RPM in a clean Fedora container (needs `podman`):
 
 The package lands in `dist/`. Install it with `sudo dnf install ./dist/kwin-close2tray-*.x86_64.rpm`, or with `rpm-ostree install` / your image's Containerfile on atomic desktops.
 
+### Debian package
+
+For Debian 13 (trixie), build a `.deb` in a clean Debian container (needs `podman`):
+
+```sh
+./packaging/build-deb.sh
+```
+
+Install it with `sudo apt install ./dist/kwin-close2tray_*+deb13_amd64.deb`.
+
+Both packages are also attached to the [releases](https://github.com/itotm/kwin-close2tray/releases).
+
 ### From source
 
 Build dependencies on Fedora:
