@@ -1,2 +1,2 @@
-module com.github.luisbocanegra.trayicon
+module com.github.itotm.close2tray.trayicon
 plugin trayiconplugin

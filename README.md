@@ -1,4 +1,6 @@
-# KWin Minimize2Tray
+# KWin Close2Tray
+
+Fork of [luisbocanegra/kwin-minimize2tray](https://github.com/luisbocanegra/kwin-minimize2tray).
 
 **This is work in progress, don't expect feature parity with other implementations right away**
 
@@ -35,8 +37,8 @@ Proper distribution packages will be available eventually, for now you can insta
 **You will need to install any required dependencies**, see [#9 Note build dependencies](https://github.com/luisbocanegra/kwin-minimize2tray/issues/9)
 
 ```sh
-git clone https://github.com/luisbocanegra/kwin-minimize2tray.git
-cd kwin-minimize2tray
+git clone https://github.com/itotm/kwin-close2tray.git
+cd kwin-close2tray
 ./install.sh
 ```
 
@@ -57,7 +59,7 @@ cd kwin-minimize2tray
 
 Enable/disable
 
-1. *Minimize to tray* from *System Settings* > *Window Management* > *KWin Scripts*
+1. *Close to Tray* from *System Settings* > *Window Management* > *KWin Scripts*
 
 By default the shortcut is set to `Meta+Alt+PgDown`, to change it:
 

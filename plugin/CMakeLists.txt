@@ -12,5 +12,5 @@ target_link_libraries(${PLUGIN_NAME}
     KF6::Service
 )
 
-install(TARGETS ${PLUGIN_NAME} DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/luisbocanegra/${LIB_NAME})
-install(FILES qmldir DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/luisbocanegra/${LIB_NAME})
+install(TARGETS ${PLUGIN_NAME} DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/itotm/close2tray/${LIB_NAME})
+install(FILES qmldir DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/itotm/close2tray/${LIB_NAME})

@@ -1,6 +1,6 @@
 import QtQuick
 import org.kde.kwin
-import com.github.luisbocanegra.trayicon 1.0
+import com.github.itotm.close2tray.trayicon 1.0
 import "../code/utils.js" as Utils
 
 Item {
@@ -13,7 +13,7 @@ Item {
     readonly property Component trayIconComponent: TrayIcon {}
 
     ShortcutHandler {
-        name: "Minimize to tray"
+        name: "Close to tray"
         text: "Minimize window to tray (sets skip Taskbar, Switcher & Pager)"
         sequence: "Meta+Alt+PgDown"
         onActivated: {

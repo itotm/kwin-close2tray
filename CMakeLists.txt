@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project("plasmoid-hidden-tasks")
+project("kwin-close2tray")
 option(BUILD_PLUGIN "Build the plugin" ON)
 option(INSTALL_SCRIPT "Install KWin Script" ON)
 option(PACKAGE_SCRIPT "Package KWin Script" OFF)
