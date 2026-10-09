@@ -1,0 +1,7 @@
+{
+    "KPlugin": {
+        "Description": "Configure which windows go to the system tray",
+        "Icon": "view-visible-symbolic",
+        "Name": "Close to Tray"
+    }
+}

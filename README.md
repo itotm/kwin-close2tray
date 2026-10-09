@@ -1,40 +1,45 @@
 # KWin Close2Tray
 
-Fork of [luisbocanegra/kwin-minimize2tray](https://github.com/luisbocanegra/kwin-minimize2tray).
+> [!NOTE]
+> This is a fork of [**kwin-minimize2tray**](https://github.com/luisbocanegra/kwin-minimize2tray) by Luis Bocanegra.
+> If you find it useful, please [**support the original author**](https://github.com/sponsors/luisbocanegra).
 
-**This is work in progress, don't expect feature parity with other implementations right away**
-
-Hide windows to the system tray, similar to [KDocker](https://github.com/user-none/KDocker) but in the form of a KWin Script that works on KDE Plasma 6.0+ Wayland.
-
-![preview](screenshots/preview.png)
-
-> [!IMPORTANT]
-> Some applications like Google Chrome or Chromium/Electron based may run in Xwayland mode and have issues hiding from taskbar or minimizing on startup, enabling native Wayland support for them can help. Usually setting an environment variable or command-line argument with KDE's `kmenuedit` is needed, refer to [Wayland - ArchWiki](https://wiki.archlinux.org/title/Wayland#GUI_libraries) or search "linux APP_NAME enable wayland support".
->
-> To verify if an application is running on Xwayland instead of Wayland use the KWin Debug Console.
-> ![wayland](screenshots/wayland.png)
+A KWin script for KDE Plasma 6 that sends windows to the system tray, hiding them from the taskbar, the task switcher (Alt+Tab) and the pager. Clicking the tray icon shows the window again.
 
 ## Features
 
-- Wayland support (X11 hasn't been tested but was [confirmed to work](https://github.com/luisbocanegra/kwin-minimize2tray/issues/25))
-- Should work with windows from any application **as long as they are minimizable**
-- Windows are hidden from Task Manager (taskbar), Task Switcher (Alt+Tab), Desktop Pager and restored when clicking on the tray icon
-- Per application visibility can be configured from System Tray widget configuration
-- Application and window status
-  - [Unity LauncherAPI](https://wiki.ubuntu.com/Unity/LauncherAPI)
-    - Counter: Top-right corner (optional dot style can be enabled from KWin script settings)
-    - Progress bar: Green bottom bar
-    - Urgent: Sets *[NeedsAttention](https://api.kde.org/plasma-types.html#ItemStatus-enum)* status of icon
-
-    **Note:** Unity LauncherAPI doesn't specify a window so all the tray icons from the same application will get the same status
-
-  - *[Demands attention](https://invent.kde.org/plasma/kwin/-/blob/fc98b4bcbd80ba025994c2d31244d984a253ec66/src/window.h#L429)* from KWin will also set *[NeedsAttention](https://api.kde.org/plasma-types.html#ItemStatus-enum)* status of icon and works per window.
+- Per-application rules, each one can be disabled without removing it:
+  - **Minimize to tray**: minimizing the window hides it in the tray
+  - **Close to tray**: the close button of the title bar hides the window in the tray instead of closing it
+  - **Start in tray**: new windows go to the tray as soon as they open
+- **Detect Window…** in the settings picks a window with a click, like KDE's Window Rules
+- Rule changes apply right away, no need to re-enable the script
+- A shortcut sends any window to the tray
+- Tray icons show the unread count, the progress and the attention state of the application
 
 ## Installation
 
-Proper distribution packages will be available eventually, for now you can install it manually.
+### Fedora package
 
-**You will need to install any required dependencies**, see [#9 Note build dependencies](https://github.com/luisbocanegra/kwin-minimize2tray/issues/9)
+Build an RPM in a clean Fedora container (needs `podman`):
+
+```sh
+./packaging/build-rpm.sh      # builds on Fedora 44, the package also installs on Fedora 45
+```
+
+The package lands in `dist/`. Install it with `sudo dnf install ./dist/kwin-close2tray-*.x86_64.rpm`, or with `rpm-ostree install` / your image's Containerfile on atomic desktops.
+
+### From source
+
+Build dependencies on Fedora:
+
+```sh
+sudo dnf install cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel \
+    kf6-kstatusnotifieritem-devel kf6-kservice-devel kf6-kcmutils-devel kf6-kconfig-devel \
+    kf6-kpackage-devel kdecoration-devel
+```
+
+Then:
 
 ```sh
 git clone https://github.com/itotm/kwin-close2tray.git
@@ -53,6 +58,8 @@ cd kwin-close2tray
     export QML_IMPORT_PATH="$HOME/.local/lib64/qml:$HOME/.local/lib/qml:$QML_IMPORT_PATH"
     ```
 
+    The settings page needs nothing extra: for installs outside the system Qt paths the script points KWin to it with an absolute path.
+
 3. Log-out or reboot to apply the change
 
 ## Configuration/Usage
@@ -61,25 +68,31 @@ Enable/disable
 
 1. *Close to Tray* from *System Settings* > *Window Management* > *KWin Scripts*
 
+Rules are configured from the settings button of the script: use *Detect Window…* and click on a window, or *Add Manually* and type its class. A rule matches the window class, the resource name or the desktop file name, ignoring case.
+
+If you used the original *Minimize to Tray* script, its *Start minimized* classes are imported the first time the settings are opened. Disable the original script, both use the same shortcut.
+
 By default the shortcut is set to `Meta+Alt+PgDown`, to change it:
 
 1. *System Settings* > *Keyboard* > *Shortcuts*
 2. From the list on the left select *KWin*
 3. Search for "Minimize window to tray" and change it to whatever you prefer
 
+*Close to tray* handles the close button of the title bar. KWin gives scripts no way to intercept Alt+F4, so to make it behave the same:
+
+1. *System Settings* > *Keyboard* > *Shortcuts* > *KWin*
+2. Remove Alt+F4 from *Close Window*
+3. Assign it to *Close window or send it to tray*: it sends windows with *Close to tray* to the tray and closes all the others
+
+Closing from the task manager or from the window menu still closes the window. To really close a window that goes to the tray, use *Quit* in the menu of its tray icon.
+
 > [!IMPORTANT]
-> Due to a limitation in KWin, you will need to log out and back in after changing the configuration of the script for it to work properly.
+> Close to tray only works with the title bar drawn by KWin. Many applications draw their own (client-side decorations): their close button is part of the application and KWin never sees the click. Switch them to the system title bar, for example:
+>
+> - **Thunderbird**: set `mail.tabs.drawInTitlebar` to `false` in *Settings › General › Config Editor*
+> - **Electron apps** (e.g. Standard Notes): look for an option like "use system title bar" (in Standard Notes it is stored as `useSystemMenuBar`)
 
-## Acknowledgements
+> [!NOTE]
+> Close to tray works by rewiring the close button of the window decoration from inside KWin. It is tested with Breeze; decorations that don't use the standard KDecoration close button keep closing windows normally.
 
-[Unity LauncherAPI](https://wiki.ubuntu.com/Unity/LauncherAPI) implementation is a simplified version of [KDE/plasma-desktop/applets/taskmanager/plugin/smartlaunchers](https://github.com/KDE/plasma-desktop/tree/e3ba92b113d8a4e2d47a589835e9d867059dc2b9/applets/taskmanager/plugin/smartlaunchers)
-
-## Support the development
-
-If this project has been useful to you, consider sponsoring or donating so I can dedicate more time to maintain and improve this and [my other open source work](https://github.com/luisbocanegra?tab=repositories&q=&type=source&language=&sort=stargazers)
-
-[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-%2329313C?logo=githubsponsors&style=for-the-badge)](https://github.com/sponsors/luisbocanegra)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-supporter?logo=ko-fi&logoColor=%23ffffff&color=%23467BEB&style=for-the-badge)](https://ko-fi.com/luisbocanegra)
-[!["Buy Me A Coffee"](https://img.shields.io/badge/Buy%20me%20a%20coffee-supporter?logo=buymeacoffee&logoColor=%23282828&color=%23FF803F&style=for-the-badge)](https://www.buymeacoffee.com/luisbocanegra)
-[![PayPal](https://img.shields.io/badge/PayPal-supporter?logo=paypal&logoColor=%23ffffff&color=%23003087&style=for-the-badge)](https://www.paypal.com/donate/?hosted_button_id=Y5TMH3Z4YZRDA)
-[![Patreon](https://img.shields.io/badge/Patreon-%23000000?logo=patreon&logoColor=%23ffffff&style=for-the-badge)](https://patreon.com/luisbocanegra?utm_medium=unknown&utm_source=join_link&utm_campaign=creatorshare_creator&utm_content=copyLink)
+The unread count and progress support is a simplified version of [KDE's task manager smart launchers](https://github.com/KDE/plasma-desktop/tree/e3ba92b113d8a4e2d47a589835e9d867059dc2b9/applets/taskmanager/plugin/smartlaunchers).

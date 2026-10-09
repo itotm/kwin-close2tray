@@ -8,7 +8,7 @@
             }
         ],
         "BugReportUrl": "https://github.com/itotm/kwin-close2tray/issues",
-        "Description": "Minimize active window to the System tray and skip Taskbar, Switcher and Pager",
+        "Description": "Send windows to the System tray when minimized or closed, and skip Taskbar, Switcher and Pager",
         "EnabledByDefault": true,
         "Id": "com.github.itotm.close2tray",
         "License": "GPL",
@@ -19,5 +19,5 @@
     },
     "X-Plasma-API": "declarativescript",
     "X-Plasma-API-Minimum-Version": "6.0",
-    "X-KDE-ConfigModule": "kwin/effects/configs/kcm_kwin4_genericscripted"
+    "X-KDE-ConfigModule": "kwin/scripts/configs/kcm_close2tray"
 }

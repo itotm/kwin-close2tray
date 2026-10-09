@@ -1,11 +1,18 @@
-function commaSeparate(string) {
-    if (!string || typeof string !== "string") {
+function parseRules(string) {
+    try {
+        const rules = JSON.parse(string || "[]");
+        return Array.isArray(rules) ? rules.filter(rule => rule.enabled && rule.windowClass) : [];
+    } catch (e) {
+        console.warn("close2tray: invalid rules " + e);
         return [];
     }
-    return string
-        .split(",")
-        .map((part) => part.trim())
-        .filter((part) => part != "");
+}
+
+function debug(message) {
+    if (debugEnabled) {
+        // warning level: distributions like Fedora hide debug output
+        console.warn("close2tray: " + message);
+    }
 }
 
 function isValidWindow(window) {
@@ -23,33 +30,96 @@ function dumpProps(obj) {
     }
 }
 
-function setup(window) {
-    if (!isValidWindow(window)) return;
-    window.captionChanged.connect(() => {
-        updateToolTip(window);
-    });
-    window.desktopsChanged.connect(() => {
-        updateToolTip(window);
-    });
-    window.outputChanged.connect(() => {
-        updateToolTip(window);
-    });
-    window.demandsAttentionChanged.connect(() => {
-        updateDemandsAttention(window);
-    });
-    window.minimizedChanged.connect(() => {
-        onMinimizeChanged(window);
-    });
-    window.iconChanged.connect(() => {
-        updateWindowIcon(window);
-    });
+function matchRule(window) {
+    const names = [window.resourceClass, window.resourceName, window.desktopFileName]
+        .filter(name => name)
+        .map(name => name.toLowerCase());
+    return rules.find(rule => names.includes(rule.windowClass.toLowerCase()));
 }
 
-function setupTrayicon(window) {
-    if (window.skipTaskbar) {
-        addTrayIcon(window);
-    } else {
-        removeTrayIcon(window);
+// Applications like Thunderbird or Electron ones show their window again right after
+// opening it: for a while after start, windows sent to the tray are kept there
+const startInTrayGraceMs = 10000;
+const startingInTray = {};
+
+function isStartingInTray(window) {
+    const until = startingInTray[window.internalId];
+    if (until === undefined) return false;
+    if (Date.now() < until) return true;
+    delete startingInTray[window.internalId];
+    return false;
+}
+
+// Signal connections made from JS outlive the script, they are tracked to drop them on unload
+const windowConnections = {};
+
+function connectWindow(window, signal, handler) {
+    signal.connect(handler);
+    const id = window.internalId;
+    windowConnections[id] = windowConnections[id] || [];
+    windowConnections[id].push([signal, handler]);
+}
+
+function disconnectWindow(window) {
+    const id = window.internalId;
+    for (const [signal, handler] of windowConnections[id] || []) {
+        try {
+            signal.disconnect(handler);
+        } catch (e) {
+            // the window is already gone
+        }
+    }
+    delete windowConnections[id];
+}
+
+function setup(window) {
+    if (!isValidWindow(window)) return;
+    connectWindow(window, window.captionChanged, () => {
+        updateToolTip(window);
+    });
+    connectWindow(window, window.desktopsChanged, () => {
+        updateToolTip(window);
+    });
+    connectWindow(window, window.outputChanged, () => {
+        updateToolTip(window);
+    });
+    connectWindow(window, window.demandsAttentionChanged, () => {
+        updateDemandsAttention(window);
+    });
+    connectWindow(window, window.minimizedChanged, () => {
+        onMinimizeChanged(window);
+    });
+    connectWindow(window, window.iconChanged, () => {
+        updateWindowIcon(window);
+    });
+    applyRule(window);
+}
+
+function teardown(window) {
+    delete startingInTray[window.internalId];
+    disconnectWindow(window);
+    removeTrayIcon(window);
+    closeInterceptor.setIntercepted(window, false);
+}
+
+// Script disabled: windows hidden in the tray would be unreachable without their icon
+function teardownAll() {
+    for (const window of Workspace.windows) {
+        if (window.internalId in trayIcons) {
+            setSkip(false, window);
+        }
+        teardown(window);
+    }
+}
+
+// Close button interception follows the rules, also when they change at runtime
+function applyRule(window) {
+    if (!isValidWindow(window)) return;
+    const rule = matchRule(window);
+    const intercept = !!rule && !!rule.closeToTray;
+    if (intercept !== closeInterceptor.isIntercepted(window)) {
+        debug(`${intercept ? "intercepting" : "releasing"} close button of ${window.resourceClass}`);
+        closeInterceptor.setIntercepted(window, intercept);
     }
 }
 
@@ -114,6 +184,8 @@ function toggleMinimize(windowId) {
 function toggleShowHide(windowId) {
     const window = getWindow(windowId);
     if (!window) return;
+    // the user asked for the window, stop holding it in the tray
+    delete startingInTray[windowId];
 
     window.minimized = !window.minimized;
     if (!window.minimized) Workspace.activeWindow = window;
@@ -125,11 +197,42 @@ function toggleShowHide(windowId) {
     }
 }
 
+function sendToTray(window) {
+    if (!isValidWindow(window)) return;
+    debug(`sending ${window.resourceClass} to tray`);
+    addTrayIcon(window);
+    setSkip(true, window);
+    setMinimize(true, window);
+}
+
+function onCloseRequested(windowId) {
+    const window = getWindow(windowId);
+    if (!window) return;
+    sendToTray(window);
+}
+
 function onMinimizeChanged(window) {
-    if (!(window.internalId in trayIcons)) {
+    if (!window.minimized && isStartingInTray(window)) {
+        // the application showed itself while starting, put it back once its request is done
+        debug(`${window.resourceClass} showed itself while starting, back to tray`);
+        const windowId = window.internalId;
+        Qt.callLater(() => {
+            const w = getWindow(windowId);
+            if (w) sendToTray(w);
+        });
         return;
     }
-    if (window.minimized && hideOnMinimize) {
+    if (!window.minimized) {
+        // restored by the application itself or by KWin, show it in the taskbar again
+        if (window.internalId in trayIcons && window.skipTaskbar) {
+            setSkip(false, window);
+        }
+        return;
+    }
+    const rule = matchRule(window);
+    if (rule && rule.minimizeToTray) {
+        sendToTray(window);
+    } else if (window.internalId in trayIcons && hideOnMinimize) {
         setSkip(true, window);
     }
 }
@@ -140,12 +243,26 @@ function getWindow(windowId) {
 
 function closeWindow(windowId) {
     const window = getWindow(windowId);
+    if (!window) return;
     window.closeWindow();
+}
+
+// Alt+F4 replacement: tray for windows with close to tray, real close otherwise
+function closeOrSendToTray(window) {
+    if (!window) return;
+    // dialogs are not valid windows, so they keep closing normally
+    const rule = matchRule(window);
+    if (rule && rule.closeToTray && isValidWindow(window)) {
+        sendToTray(window);
+    } else {
+        window.closeWindow();
+    }
 }
 
 function unpinIcon(windowId) {
     const window = getWindow(windowId);
     if (!window) return;
+    delete startingInTray[windowId];
     setMinimize(false, window);
     setSkip(false, window);
     removeTrayIcon(window);
@@ -172,8 +289,9 @@ function updateDemandsAttention(window) {
 
 function setupAutoHide(window) {
     if (!isValidWindow(window)) return;
-    if (hideByDefaultClass.includes(window.resourceName) || hideByDefaultClass.includes(window.resourceClass)) {
-        toggleShowHide(window.internalId);
-        addTrayIcon(window);
+    const rule = matchRule(window);
+    if (rule && rule.startInTray) {
+        startingInTray[window.internalId] = Date.now() + startInTrayGraceMs;
+        sendToTray(window);
     }
 }
