@@ -1,5 +1,5 @@
 Name:           kwin-close2tray
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        KWin script that sends windows to the system tray when minimized or closed
 
@@ -49,5 +49,9 @@ Fork of kwin-minimize2tray by Luis Bocanegra.
 %{_qt6_plugindir}/kwin/scripts/configs/kcm_close2tray.so
 
 %changelog
+* Mon Oct 12 2026 itotm <1804363+itotm@users.noreply.github.com> - 0.1.1-1
+- Keep X11 windows out of the taskbar while they are in the tray
+- Keep the unread badge when the window icon changes
+
 * Fri Oct 09 2026 itotm <1804363+itotm@users.noreply.github.com> - 0.1.0-1
 - First release of the fork: close to tray, per-application rules, window detection in the settings

@@ -19,6 +19,9 @@ Item {
         rules = Utils.parseRules(KWin.readConfig("rules", "[]"));
         countUseDot = KWin.readConfig("countUseDot", false);
         hideOnMinimize = KWin.readConfig("hideOnMinimize", false);
+        for (const windowId in trayIcons) {
+            trayIcons[windowId].countUseDot = countUseDot;
+        }
         Utils.debug(`loaded ${rules.length} enabled rules`);
     }
 

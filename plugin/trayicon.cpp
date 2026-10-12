@@ -201,7 +201,9 @@ void TrayIcon::initializeTrayIcon() {
 
     connect(this, &TrayIcon::appNameChanged, this, [this]() { trayIcon->setTitle(m_appName); });
 
-    connect(this, &TrayIcon::iconChanged, this, [this]() { trayIcon->setIconByPixmap(m_icon); });
+    // The window icon changes often (e.g. web apps updating their favicon on new messages):
+    // redraw the badges on top of the new icon instead of dropping them
+    connect(this, &TrayIcon::iconChanged, this, [this]() { updateBadges(); });
 
     QDBusConnection::sessionBus().connect(QString(), QString(), "com.canonical.Unity.LauncherEntry", "Update", this,
                                           SLOT(launcherAPIUpdate(QString, QMap<QString, QVariant>)));
@@ -225,6 +227,7 @@ void TrayIcon::initializeTrayIcon() {
     connect(this, &TrayIcon::countVisibleChanged, this, [this]() { updateBadges(); });
     connect(this, &TrayIcon::progressVisibleChanged, this, [this]() { updateBadges(); });
     connect(this, &TrayIcon::countChanged, this, [this]() { updateBadges(); });
+    connect(this, &TrayIcon::countUseDotChanged, this, [this]() { updateBadges(); });
     connect(this, &TrayIcon::progressChanged, this, [this]() { updateBadges(); });
 
     setAppName(m_xdgName);

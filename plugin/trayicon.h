@@ -84,10 +84,10 @@ class TrayIcon : public QObject {
     QString appName() const { return m_appName; }
     void setAppName(const QString &xdgName);
     void updateBadges();
-    bool m_demandsAttention;
+    bool m_demandsAttention = false;
     bool demandsAttention() const { return m_demandsAttention; }
     void setDemandsAttention(bool demandsAttention);
-    bool m_countUseDot;
+    bool m_countUseDot = false;
     bool countUseDot() const { return m_countUseDot; }
     void setCountUseDot(bool countUseDot);
 

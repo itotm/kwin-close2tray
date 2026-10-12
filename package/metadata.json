@@ -14,7 +14,7 @@
         "License": "GPL",
         "Name": "Close to Tray",
         "Icon": "view-visible-symbolic",
-        "Version": "0.1.0",
+        "Version": "0.1.1",
         "Website": "https://github.com/itotm/kwin-close2tray"
     },
     "X-Plasma-API": "declarativescript",

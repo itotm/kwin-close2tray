@@ -50,6 +50,9 @@ function isStartingInTray(window) {
     return false;
 }
 
+// Windows this script has hidden in the tray, until something shows them again
+const hiddenInTray = {};
+
 // Signal connections made from JS outlive the script, they are tracked to drop them on unload
 const windowConnections = {};
 
@@ -92,11 +95,25 @@ function setup(window) {
     connectWindow(window, window.iconChanged, () => {
         updateWindowIcon(window);
     });
+    connectWindow(window, window.skipTaskbarChanged, () => {
+        keepInTray(window);
+    });
     applyRule(window);
+}
+
+// For X11 windows KWin resets skip taskbar to the value requested by the application whenever it updates
+// the window visibility (e.g. when the monitor goes to sleep): a window hidden in the tray would show up
+// in the taskbar again. Skip pager and switcher have no such reset.
+function keepInTray(window) {
+    if (!hiddenInTray[window.internalId] || !window.minimized || window.skipTaskbar) return;
+    debug(`${window.resourceClass} came back to the taskbar while in the tray, hiding it again`);
+    window.skipTaskbar = true;
+    window.skipSwitcher = true;
 }
 
 function teardown(window) {
     delete startingInTray[window.internalId];
+    delete hiddenInTray[window.internalId];
     disconnectWindow(window);
     removeTrayIcon(window);
     closeInterceptor.setIntercepted(window, false);
@@ -105,10 +122,12 @@ function teardown(window) {
 // Script disabled: windows hidden in the tray would be unreachable without their icon
 function teardownAll() {
     for (const window of Workspace.windows) {
-        if (window.internalId in trayIcons) {
+        const wasInTray = window.internalId in trayIcons;
+        // disconnect first, keepInTray would hide the window again
+        teardown(window);
+        if (wasInTray) {
             setSkip(false, window);
         }
-        teardown(window);
     }
 }
 
@@ -191,8 +210,10 @@ function toggleShowHide(windowId) {
     if (!window.minimized) Workspace.activeWindow = window;
 
     if (window.minimized) {
+        hiddenInTray[windowId] = true;
         setSkip(true, window);
     } else {
+        delete hiddenInTray[windowId];
         setSkip(false, window);
     }
 }
@@ -200,6 +221,7 @@ function toggleShowHide(windowId) {
 function sendToTray(window) {
     if (!isValidWindow(window)) return;
     debug(`sending ${window.resourceClass} to tray`);
+    hiddenInTray[window.internalId] = true;
     addTrayIcon(window);
     setSkip(true, window);
     setMinimize(true, window);
@@ -223,8 +245,10 @@ function onMinimizeChanged(window) {
         return;
     }
     if (!window.minimized) {
-        // restored by the application itself or by KWin, show it in the taskbar again
-        if (window.internalId in trayIcons && window.skipTaskbar) {
+        // restored by the application itself or by KWin, show it in the taskbar again.
+        // Not only when skipTaskbar is set: for X11 windows KWin has already reset it
+        delete hiddenInTray[window.internalId];
+        if (window.internalId in trayIcons) {
             setSkip(false, window);
         }
         return;
@@ -233,6 +257,7 @@ function onMinimizeChanged(window) {
     if (rule && rule.minimizeToTray) {
         sendToTray(window);
     } else if (window.internalId in trayIcons && hideOnMinimize) {
+        hiddenInTray[window.internalId] = true;
         setSkip(true, window);
     }
 }
@@ -263,6 +288,7 @@ function unpinIcon(windowId) {
     const window = getWindow(windowId);
     if (!window) return;
     delete startingInTray[windowId];
+    delete hiddenInTray[windowId];
     setMinimize(false, window);
     setSkip(false, window);
     removeTrayIcon(window);
