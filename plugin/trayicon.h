@@ -21,6 +21,8 @@ class TrayIcon : public QObject {
     Q_PROPERTY(QString xdgName READ xdgName WRITE setXdgName NOTIFY xdgNameChanged)
     Q_PROPERTY(bool demandsAttention READ demandsAttention WRITE setDemandsAttention NOTIFY demandsAttentionChanged)
     Q_PROPERTY(bool countUseDot READ countUseDot WRITE setCountUseDot NOTIFY countUseDotChanged)
+    // the application sent a notification the user hasn't seen yet
+    Q_PROPERTY(bool notified READ notified WRITE setNotified NOTIFY notifiedChanged)
 
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     Q_PROPERTY(bool countVisible READ countVisible NOTIFY countVisibleChanged)
@@ -52,6 +54,7 @@ class TrayIcon : public QObject {
     void xdgNameChanged();
     void demandsAttentionChanged();
     void countUseDotChanged();
+    void notifiedChanged();
 
     void launcherUrlChanged(const QString &launcherUrl);
     void countChanged(int count);
@@ -90,6 +93,10 @@ class TrayIcon : public QObject {
     bool m_countUseDot = false;
     bool countUseDot() const { return m_countUseDot; }
     void setCountUseDot(bool countUseDot);
+    bool m_notified = false;
+    bool notified() const { return m_notified; }
+    void setNotified(bool notified);
+    void updateStatus();
 
     void setCount(int count);
     void setCountVisible(bool countVisible);

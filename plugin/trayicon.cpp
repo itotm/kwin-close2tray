@@ -208,20 +208,11 @@ void TrayIcon::initializeTrayIcon() {
     QDBusConnection::sessionBus().connect(QString(), QString(), "com.canonical.Unity.LauncherEntry", "Update", this,
                                           SLOT(launcherAPIUpdate(QString, QMap<QString, QVariant>)));
 
-    connect(this, &TrayIcon::urgentChanged, this, [this]() {
-        if (m_urgent) {
-            trayIcon->setStatus(KStatusNotifierItem::NeedsAttention);
-        } else {
-            trayIcon->setStatus(KStatusNotifierItem::Active);
-        }
-    });
-
-    connect(this, &TrayIcon::demandsAttentionChanged, this, [this]() {
-        if (m_demandsAttention) {
-            trayIcon->setStatus(KStatusNotifierItem::NeedsAttention);
-        } else {
-            trayIcon->setStatus(KStatusNotifierItem::Active);
-        }
+    connect(this, &TrayIcon::urgentChanged, this, [this]() { updateStatus(); });
+    connect(this, &TrayIcon::demandsAttentionChanged, this, [this]() { updateStatus(); });
+    connect(this, &TrayIcon::notifiedChanged, this, [this]() {
+        updateStatus();
+        updateBadges();
     });
 
     connect(this, &TrayIcon::countVisibleChanged, this, [this]() { updateBadges(); });
@@ -236,7 +227,14 @@ void TrayIcon::initializeTrayIcon() {
     trayIcon->setToolTipSubTitle(m_xdgName);
     trayIcon->setIconByPixmap(m_icon);
     trayIcon->setTitle(m_appName);
-    trayIcon->setStatus(KStatusNotifierItem::Active);
+    updateStatus();
+    updateBadges();
+}
+
+// Each source of attention can end on its own, the icon needs attention while any of them is on
+void TrayIcon::updateStatus() {
+    const bool attention = m_urgent || m_demandsAttention || m_notified;
+    trayIcon->setStatus(attention ? KStatusNotifierItem::NeedsAttention : KStatusNotifierItem::Active);
 }
 
 void TrayIcon::setAppName(const QString &xdgName) {
@@ -255,7 +253,8 @@ void TrayIcon::setAppName(const QString &xdgName) {
 }
 
 void TrayIcon::updateBadges() {
-    if (m_countVisible || m_progressVisible) {
+    const bool showCount = m_countVisible && m_count > 0;
+    if (m_countVisible || m_progressVisible || m_notified) {
         QSize maxIconSize;
         for (const QSize &size : m_icon.availableSizes()) {
             if (size.height() > maxIconSize.height()) {
@@ -296,7 +295,8 @@ void TrayIcon::updateBadges() {
             painter.drawText(pixmapRect, alignFlags, text);
         }
 
-        if (m_countVisible && m_count > 0 && m_countUseDot) {
+        // a notification shows as a dot, unless the count already tells there is something new
+        if ((showCount && m_countUseDot) || (m_notified && !showCount)) {
             int borderWidth = static_cast<int>(2 * dynamicScaling);
             int circleRadius = static_cast<int>(3 * dynamicScaling);
             int shadowRadius = circleRadius + borderWidth;
@@ -329,6 +329,13 @@ void TrayIcon::setDemandsAttention(bool demandsAttention) {
     if (m_demandsAttention != demandsAttention) {
         m_demandsAttention = demandsAttention;
         emit demandsAttentionChanged();
+    }
+}
+
+void TrayIcon::setNotified(bool notified) {
+    if (m_notified != notified) {
+        m_notified = notified;
+        emit notifiedChanged();
     }
 }
 

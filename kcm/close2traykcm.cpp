@@ -84,9 +84,13 @@ Close2TrayKcm::Close2TrayKcm(QObject *parent, const KPluginMetaData &data) : KCM
     m_hideOnMinimize = new QCheckBox(QStringLiteral("Windows sent to the tray with the shortcut go back to the tray "
                                                     "when minimized"));
     m_countUseDot = new QCheckBox(QStringLiteral("Show unread count as a dot"));
+    m_notificationDot = new QCheckBox(QStringLiteral("Mark the tray icon when the application sends a notification"));
+    m_notificationDot->setToolTip(QStringLiteral("For applications that don't report an unread count, like "
+                                                 "Thunderbird: the mark goes away when the window is shown"));
     m_debugEnabled = new QCheckBox(QStringLiteral("Debug logging"));
     layout->addWidget(m_hideOnMinimize);
     layout->addWidget(m_countUseDot);
+    layout->addWidget(m_notificationDot);
     layout->addWidget(m_debugEnabled);
 
     auto *shortcutNote = new QLabel(QStringLiteral(
@@ -122,7 +126,7 @@ Close2TrayKcm::Close2TrayKcm(QObject *parent, const KPluginMetaData &data) : KCM
         }
         markChanged();
     });
-    for (QCheckBox *box : {m_hideOnMinimize, m_countUseDot, m_debugEnabled}) {
+    for (QCheckBox *box : {m_hideOnMinimize, m_countUseDot, m_notificationDot, m_debugEnabled}) {
         connect(box, &QCheckBox::toggled, this, &Close2TrayKcm::markChanged);
     }
 
@@ -177,6 +181,7 @@ void Close2TrayKcm::load() {
             .readEntry("hideOnMinimize", false);
     m_hideOnMinimize->setChecked(group.readEntry("hideOnMinimize", upstreamHideOnMinimize));
     m_countUseDot->setChecked(group.readEntry("countUseDot", false));
+    m_notificationDot->setChecked(group.readEntry("notificationDot", true));
     m_debugEnabled->setChecked(group.readEntry("debugEnabled", false));
     m_message->hide();
     m_loading = false;
@@ -199,6 +204,7 @@ void Close2TrayKcm::save() {
     group.writeEntry("rules", QString::fromUtf8(QJsonDocument(rules).toJson(QJsonDocument::Compact)));
     group.writeEntry("hideOnMinimize", m_hideOnMinimize->isChecked());
     group.writeEntry("countUseDot", m_countUseDot->isChecked());
+    group.writeEntry("notificationDot", m_notificationDot->isChecked());
     group.writeEntry("debugEnabled", m_debugEnabled->isChecked());
     group.sync();
 
@@ -214,6 +220,7 @@ void Close2TrayKcm::defaults() {
     m_rules->clear();
     m_hideOnMinimize->setChecked(false);
     m_countUseDot->setChecked(false);
+    m_notificationDot->setChecked(true);
     m_debugEnabled->setChecked(false);
     updateButtons();
     markChanged();

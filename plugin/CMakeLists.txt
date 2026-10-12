@@ -1,10 +1,12 @@
 set(PLUGIN_NAME "trayiconplugin")
 set(LIB_NAME "trayicon")
 
-add_library(${PLUGIN_NAME} SHARED ${PLUGIN_NAME}.cpp ${LIB_NAME}.cpp closeinterceptor.cpp)
+add_library(${PLUGIN_NAME} SHARED ${PLUGIN_NAME}.cpp ${LIB_NAME}.cpp closeinterceptor.cpp notificationwatcher.cpp)
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS DBus Qml)
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS StatusNotifierItem Service)
 find_package(KDecoration3 REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DBUS REQUIRED IMPORTED_TARGET dbus-1)
 
 target_link_libraries(${PLUGIN_NAME}
     Qt6::Qml
@@ -12,6 +14,7 @@ target_link_libraries(${PLUGIN_NAME}
     KF6::StatusNotifierItem
     KF6::Service
     KDecoration3::KDecoration
+    PkgConfig::DBUS
 )
 
 install(TARGETS ${PLUGIN_NAME} DESTINATION ${KDE_INSTALL_QMLDIR}/com/github/itotm/close2tray/${LIB_NAME})

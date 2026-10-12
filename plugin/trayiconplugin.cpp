@@ -1,4 +1,5 @@
 #include "closeinterceptor.h"
+#include "notificationwatcher.h"
 #include "trayicon.h"
 
 #include <QGuiApplication>
@@ -13,6 +14,7 @@ class TrayIconPlugin : public QQmlExtensionPlugin {
     void registerTypes(const char *uri) override {
         qmlRegisterType<TrayIcon>(uri, 1, 0, "TrayIcon");
         qmlRegisterType<CloseInterceptor>(uri, 1, 0, "CloseInterceptor");
+        qmlRegisterType<NotificationWatcher>(uri, 1, 0, "NotificationWatcher");
     }
 };
 

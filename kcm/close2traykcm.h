@@ -46,6 +46,7 @@ class Close2TrayKcm : public KCModule {
     QLabel *m_message;
     QCheckBox *m_hideOnMinimize;
     QCheckBox *m_countUseDot;
+    QCheckBox *m_notificationDot;
     QCheckBox *m_debugEnabled;
     bool m_loading = false;
 };

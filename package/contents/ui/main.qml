@@ -9,6 +9,7 @@ Item {
     property var rules: []
     property bool countUseDot: false
     property bool hideOnMinimize: false
+    property bool notificationDot: true
     property var trayIcons: new Object()
     // KWin is shutting down, the workspace may already be gone
     property bool quitting: false
@@ -19,10 +20,17 @@ Item {
         rules = Utils.parseRules(KWin.readConfig("rules", "[]"));
         countUseDot = KWin.readConfig("countUseDot", false);
         hideOnMinimize = KWin.readConfig("hideOnMinimize", false);
+        notificationDot = KWin.readConfig("notificationDot", true);
         for (const windowId in trayIcons) {
             trayIcons[windowId].countUseDot = countUseDot;
         }
         Utils.debug(`loaded ${rules.length} enabled rules`);
+    }
+
+    NotificationWatcher {
+        id: notificationWatcher
+        enabled: root.notificationDot && !root.quitting
+        onNotified: (desktopEntry, appName) => Utils.onNotification(desktopEntry, appName)
     }
 
     CloseInterceptor {

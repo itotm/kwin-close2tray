@@ -16,6 +16,7 @@ A KWin script for KDE Plasma 6 that sends windows to the system tray, hiding the
 - Rule changes apply right away, no need to re-enable the script
 - A shortcut sends any window to the tray
 - Tray icons show the unread count, the progress and the attention state of the application
+- Applications that don't report an unread count, like Thunderbird, get a dot on their tray icon when they send a notification, until the window is shown
 
 ## Installation
 
@@ -48,7 +49,7 @@ Build dependencies on Fedora:
 ```sh
 sudo dnf install cmake extra-cmake-modules gcc-c++ qt6-qtbase-devel qt6-qtdeclarative-devel \
     kf6-kstatusnotifieritem-devel kf6-kservice-devel kf6-kcmutils-devel kf6-kconfig-devel \
-    kf6-kpackage-devel kdecoration-devel
+    kf6-kpackage-devel kdecoration-devel dbus-devel
 ```
 
 Then:

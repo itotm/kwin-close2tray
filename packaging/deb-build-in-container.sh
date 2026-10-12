@@ -7,7 +7,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
     cmake extra-cmake-modules g++ dpkg-dev \
     qt6-base-dev qt6-declarative-dev \
     libkf6statusnotifieritem-dev libkf6service-dev libkf6kcmutils-dev \
-    libkf6config-dev libkf6package-dev libkdecorations3-dev >/dev/null
+    libkf6config-dev libkf6package-dev libkdecorations3-dev libdbus-1-dev >/dev/null
 
 mkdir -p /build/src
 tar -xzf /sources/source.tar.gz -C /build/src

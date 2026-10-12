@@ -98,6 +98,9 @@ function setup(window) {
     connectWindow(window, window.skipTaskbarChanged, () => {
         keepInTray(window);
     });
+    connectWindow(window, window.activeChanged, () => {
+        if (window.active) clearNotified(window);
+    });
     applyRule(window);
 }
 
@@ -121,6 +124,7 @@ function teardown(window) {
 
 // Script disabled: windows hidden in the tray would be unreachable without their icon
 function teardownAll() {
+    notificationWatcher.enabled = false;
     for (const window of Workspace.windows) {
         const wasInTray = window.internalId in trayIcons;
         // disconnect first, keepInTray would hide the window again
@@ -245,6 +249,7 @@ function onMinimizeChanged(window) {
         return;
     }
     if (!window.minimized) {
+        clearNotified(window);
         // restored by the application itself or by KWin, show it in the taskbar again.
         // Not only when skipTaskbar is set: for X11 windows KWin has already reset it
         delete hiddenInTray[window.internalId];
@@ -310,6 +315,29 @@ function updateWindowIcon(window) {
 function updateDemandsAttention(window) {
     if (window.internalId in trayIcons) {
         trayIcons[window.internalId].demandsAttention = window.demandsAttention;
+    }
+}
+
+// A notification from the application of a window in the tray marks its icon until the window is seen
+function onNotification(desktopEntry, appName) {
+    const names = [desktopEntry, appName].filter(name => name).map(name => name.toLowerCase());
+    for (const window of Workspace.windows) {
+        if (!(window.internalId in trayIcons) || (window.active && !window.minimized)) continue;
+        const windowNames = [window.desktopFileName, window.resourceClass, window.resourceName]
+            .filter(name => name)
+            .map(name => name.toLowerCase());
+        if (names.some(name => windowNames.includes(name))) {
+            debug(`notification from ${window.resourceClass}`);
+            trayIcons[window.internalId].notified = true;
+        }
+    }
+}
+
+function clearNotified(window) {
+    const trayIcon = trayIcons[window.internalId];
+    if (trayIcon && trayIcon.notified) {
+        debug(`notification of ${window.resourceClass} seen`);
+        trayIcon.notified = false;
     }
 }
 
