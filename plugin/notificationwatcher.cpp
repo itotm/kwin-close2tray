@@ -11,7 +11,7 @@ Q_LOGGING_CATEGORY(C2TNotifications, "close2tray", QtWarningMsg)
 
 namespace {
 
-using Deliver = std::function<void(const QString &desktopEntry, const QString &appName)>;
+using Deliver = std::function<void(const QString &desktopEntry, const QString &appName, const QString &origin)>;
 
 QString readString(DBusMessageIter *iter) {
     if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
@@ -52,6 +52,7 @@ DBusHandlerResult filter(DBusConnection *, DBusMessage *message, void *data) {
         dbus_message_iter_init(message, &iter)) {
         QString desktopEntry;
         QString appName;
+        QString origin;
         if (qstrcmp(interface, "org.freedesktop.Notifications") == 0 && qstrcmp(member, "Notify") == 0) {
             // app_name, replaces_id, app_icon, summary, body, actions, hints, expire_timeout
             appName = readString(&iter);
@@ -59,14 +60,16 @@ DBusHandlerResult filter(DBusConnection *, DBusMessage *message, void *data) {
                 dbus_message_iter_next(&iter);
             }
             desktopEntry = readHint(&iter, "desktop-entry");
+            // set by browsers (Chromium) for web notifications, e.g. outlook.office.com
+            origin = readHint(&iter, "x-kde-origin-name");
         } else if (qstrcmp(interface, "org.freedesktop.impl.portal.Notification") == 0 &&
                    qstrcmp(member, "AddNotification") == 0) {
             // app_id, id, notification
             desktopEntry = readString(&iter);
         }
         if (!desktopEntry.isEmpty() || !appName.isEmpty()) {
-            qCDebug(C2TNotifications) << "notification from" << desktopEntry << appName;
-            deliver(desktopEntry, appName);
+            qCDebug(C2TNotifications) << "notification from" << desktopEntry << appName << origin;
+            deliver(desktopEntry, appName, origin);
         }
     }
     // a monitor must never reply: claiming every message keeps libdbus from sending errors
@@ -138,13 +141,13 @@ void NotificationWatcher::start() {
     m_stop = stopFlag;
     // runs in the monitoring thread: hand the result to the main thread, where this object lives.
     // stop() sets the flag before this object can go away, so a late delivery is dropped
-    Deliver deliver = [this, stopFlag](const QString &desktopEntry, const QString &appName) {
+    Deliver deliver = [this, stopFlag](const QString &desktopEntry, const QString &appName, const QString &origin) {
         if (QCoreApplication *app = QCoreApplication::instance()) {
             QMetaObject::invokeMethod(
                 app,
-                [this, stopFlag, desktopEntry, appName]() {
+                [this, stopFlag, desktopEntry, appName, origin]() {
                     if (!stopFlag->load()) {
-                        emit notified(desktopEntry, appName);
+                        emit notified(desktopEntry, appName, origin);
                     }
                 },
                 Qt::QueuedConnection);

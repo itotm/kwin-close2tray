@@ -16,7 +16,8 @@ A KWin script for KDE Plasma 6 that sends windows to the system tray, hiding the
 - Rule changes apply right away, no need to re-enable the script
 - A shortcut sends any window to the tray
 - Tray icons show the unread count, the progress and the attention state of the application
-- Applications that don't report an unread count, like Thunderbird, get a dot on their tray icon when they send a notification, until the window is shown
+- Applications that don't report an unread count, like Thunderbird, get a dot on their tray icon when they send a notification, until the window is shown. Web apps installed from a Chromium based browser (Outlook, Teams…) are recognized from the website named in the notification and their window title
+- Rules apply to the main window of an application, the one opened while no other was: windows it opens later, like a new message in Thunderbird or a web app popup, stay normal windows
 
 ## Installation
 

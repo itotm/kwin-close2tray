@@ -30,7 +30,7 @@ Item {
     NotificationWatcher {
         id: notificationWatcher
         enabled: root.notificationDot && !root.quitting
-        onNotified: (desktopEntry, appName) => Utils.onNotification(desktopEntry, appName)
+        onNotified: (desktopEntry, appName, origin) => Utils.onNotification(desktopEntry, appName, origin)
     }
 
     CloseInterceptor {

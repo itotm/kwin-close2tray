@@ -50,6 +50,25 @@ function isStartingInTray(window) {
     return false;
 }
 
+// Rules apply to the main window of an application, the one opened while no other was: windows it opens
+// later (a message being written in Thunderbird, a web app popup) stay normal windows
+const mainWindows = {};
+
+function appKey(window) {
+    return (window.desktopFileName || window.resourceClass || "").toLowerCase();
+}
+
+function markMainWindow(window) {
+    const key = appKey(window);
+    const hasMain = Workspace.windows.some(w => w.internalId !== window.internalId && mainWindows[w.internalId] && appKey(w) === key);
+    mainWindows[window.internalId] = !hasMain;
+    if (hasMain) debug(`${window.resourceClass}: secondary window, rules not applied`);
+}
+
+function isMainWindow(window) {
+    return !!mainWindows[window.internalId];
+}
+
 // Windows this script has hidden in the tray, until something shows them again
 const hiddenInTray = {};
 
@@ -77,6 +96,7 @@ function disconnectWindow(window) {
 
 function setup(window) {
     if (!isValidWindow(window)) return;
+    markMainWindow(window);
     connectWindow(window, window.captionChanged, () => {
         updateToolTip(window);
     });
@@ -116,6 +136,7 @@ function keepInTray(window) {
 
 function teardown(window) {
     delete startingInTray[window.internalId];
+    delete mainWindows[window.internalId];
     delete hiddenInTray[window.internalId];
     disconnectWindow(window);
     removeTrayIcon(window);
@@ -139,7 +160,7 @@ function teardownAll() {
 function applyRule(window) {
     if (!isValidWindow(window)) return;
     const rule = matchRule(window);
-    const intercept = !!rule && !!rule.closeToTray;
+    const intercept = !!rule && !!rule.closeToTray && isMainWindow(window);
     if (intercept !== closeInterceptor.isIntercepted(window)) {
         debug(`${intercept ? "intercepting" : "releasing"} close button of ${window.resourceClass}`);
         closeInterceptor.setIntercepted(window, intercept);
@@ -259,7 +280,7 @@ function onMinimizeChanged(window) {
         return;
     }
     const rule = matchRule(window);
-    if (rule && rule.minimizeToTray) {
+    if (rule && rule.minimizeToTray && isMainWindow(window)) {
         sendToTray(window);
     } else if (window.internalId in trayIcons && hideOnMinimize) {
         hiddenInTray[window.internalId] = true;
@@ -282,7 +303,7 @@ function closeOrSendToTray(window) {
     if (!window) return;
     // dialogs are not valid windows, so they keep closing normally
     const rule = matchRule(window);
-    if (rule && rule.closeToTray && isValidWindow(window)) {
+    if (rule && rule.closeToTray && isValidWindow(window) && isMainWindow(window)) {
         sendToTray(window);
     } else {
         window.closeWindow();
@@ -318,19 +339,73 @@ function updateDemandsAttention(window) {
     }
 }
 
-// A notification from the application of a window in the tray marks its icon until the window is seen
-function onNotification(desktopEntry, appName) {
-    const names = [desktopEntry, appName].filter(name => name).map(name => name.toLowerCase());
-    for (const window of Workspace.windows) {
-        if (!(window.internalId in trayIcons) || (window.active && !window.minimized)) continue;
-        const windowNames = [window.desktopFileName, window.resourceClass, window.resourceName]
-            .filter(name => name)
-            .map(name => name.toLowerCase());
-        if (names.some(name => windowNames.includes(name))) {
-            debug(`notification from ${window.resourceClass}`);
-            trayIcons[window.internalId].notified = true;
-        }
+// How closely a notification names the application of a window: 3 desktop file, 2 instance, 1 class, 0 not at all
+function notificationMatch(window, names) {
+    const fields = [window.desktopFileName, window.resourceName, window.resourceClass];
+    for (let i = 0; i < fields.length; i++) {
+        if (fields[i] && names.includes(fields[i].toLowerCase())) return fields.length - i;
     }
+    return 0;
+}
+
+// Windows of web apps installed from a Chromium based browser: chrome-<app id>-<profile>, brave-…, msedge-…
+function isWebAppWindow(window) {
+    return /^[a-z]+-[a-p]{32}-/.test(window.desktopFileName || "");
+}
+
+// Parts of a website name too common to identify a web app (mail.google.com must not mark Outlook's "Mail")
+const genericOriginLabels = ["www", "m", "mail", "web", "app", "apps", "cloud", "online", "login", "my", "home", "office"];
+
+// Browsers send every notification under their own name, web apps included, and tell the website in the
+// origin (e.g. outlook.office.com): the web app is the one whose title names the site
+function webAppsForOrigin(origin) {
+    const host = origin.toLowerCase().split(/[/:]/)[0];
+    const labels = host.split(".").slice(0, -1).filter(label => label.length > 1 && !genericOriginLabels.includes(label));
+    const webApps = Workspace.windows.filter(window => isValidWindow(window) && isWebAppWindow(window));
+    for (const label of labels) {
+        const word = new RegExp(`\\b${label.replace(/[^a-z0-9]/g, "\\$&")}\\b`);
+        const matches = webApps.filter(window => word.test(window.caption.toLowerCase()));
+        if (matches.length > 0) return matches;
+    }
+    return [];
+}
+
+// A notification from the application of a window in the tray marks its icon until the window is seen
+function onNotification(desktopEntry, appName, origin) {
+    const matches = (origin && webAppsForOrigin(origin)) || [];
+    if (matches.length === 0) {
+        matches.push(...windowsForNotificationName(desktopEntry, appName));
+    }
+    for (const window of matches) {
+        if (!(window.internalId in trayIcons) || (window.active && !window.minimized)) continue;
+        debug(`notification from ${window.resourceClass}`);
+        trayIcons[window.internalId].notified = true;
+    }
+}
+
+// Only the windows matched most closely count: Chrome web apps all have the class google-chrome on X11, and
+// a notification naming a single web app, or Chrome itself, must not mark the others
+function windowsForNotificationName(desktopEntry, appName) {
+    const names = [desktopEntry, appName].filter(name => name).map(name => name.toLowerCase());
+    const matches = [];
+    let best = 0;
+    for (const window of Workspace.windows) {
+        if (!isValidWindow(window)) continue;
+        const match = notificationMatch(window, names);
+        if (match === 0 || match < best) continue;
+        if (match > best) {
+            best = match;
+            matches.length = 0;
+        }
+        matches.push(window);
+    }
+    // matched only by a class shared by different applications: no way to tell which one sent it
+    const apps = new Set(matches.map(window => window.desktopFileName || window.resourceName));
+    if (best === 1 && apps.size > 1) {
+        debug(`notification from ${[...apps].join(", ")}: ambiguous, ignored`);
+        return [];
+    }
+    return matches;
 }
 
 function clearNotified(window) {
@@ -344,7 +419,7 @@ function clearNotified(window) {
 function setupAutoHide(window) {
     if (!isValidWindow(window)) return;
     const rule = matchRule(window);
-    if (rule && rule.startInTray) {
+    if (rule && rule.startInTray && isMainWindow(window)) {
         startingInTray[window.internalId] = Date.now() + startInTrayGraceMs;
         sendToTray(window);
     }

@@ -12,7 +12,7 @@
 // A private session bus connection becomes a monitor (like dbus-monitor) for the two
 // ways notifications reach Plasma: org.freedesktop.Notifications.Notify from regular
 // applications, and the portal backend AddNotification for sandboxed ones (Flatpak).
-// Only the application id and name are read, never the content of the notification.
+// Only the application id and name and the website origin are read, never the content of the notification.
 class NotificationWatcher : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
@@ -26,8 +26,9 @@ class NotificationWatcher : public QObject {
 
   signals:
     void enabledChanged();
-    // desktopEntry: desktop file name or application id, may be empty; appName may be empty
-    void notified(const QString &desktopEntry, const QString &appName);
+    // desktopEntry: desktop file name or application id; origin: website of a browser notification.
+    // Any of them may be empty
+    void notified(const QString &desktopEntry, const QString &appName, const QString &origin);
 
   private:
     void start();
