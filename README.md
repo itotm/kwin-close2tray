@@ -11,7 +11,7 @@ A KWin script for KDE Plasma 6 that sends windows to the system tray, hiding the
 - Per-application rules, each one can be disabled without removing it:
   - **Minimize to tray**: minimizing the window hides it in the tray
   - **Close to tray**: the close button of the title bar hides the window in the tray instead of closing it
-  - **Start in tray**: new windows go to the tray as soon as they open
+  - **Start in tray**: new windows go to the tray as soon as they open, without flashing on screen
 - **Detect Window…** in the settings picks a window with a click, like KDE's Window Rules
 - Rule changes apply right away, no need to re-enable the script
 - A shortcut sends any window to the tray

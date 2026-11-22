@@ -1,5 +1,5 @@
 Name:           kwin-close2tray
-Version:        0.2.1
+Version:        0.2.2
 Release:        1%{?dist}
 Summary:        KWin script that sends windows to the system tray when minimized or closed
 
@@ -50,6 +50,9 @@ Fork of kwin-minimize2tray by Luis Bocanegra.
 %{_qt6_plugindir}/kwin/scripts/configs/kcm_close2tray.so
 
 %changelog
+* Sun Nov 22 2026 itotm <1804363+itotm@users.noreply.github.com> - 0.2.2-1
+- Windows started in the tray stay transparent while they get there, so their open and minimize animations no longer flash on screen
+
 * Tue Oct 13 2026 itotm <1804363+itotm@users.noreply.github.com> - 0.2.1-1
 - Mark only the application that sent the notification, not the others sharing its window class
 - Recognize notifications of browser web apps (Outlook, Teams…) from the website they come from

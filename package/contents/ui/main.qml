@@ -33,6 +33,14 @@ Item {
         onNotified: (desktopEntry, appName, origin) => Utils.onNotification(desktopEntry, appName, origin)
     }
 
+    // Restores the opacity of windows started in the tray once their grace period is over
+    Timer {
+        id: startInTrayTimer
+        interval: 1000
+        repeat: true
+        onTriggered: Utils.checkStartingInTray()
+    }
+
     CloseInterceptor {
         id: closeInterceptor
         onCloseRequested: windowId => Utils.onCloseRequested(windowId)

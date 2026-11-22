@@ -42,6 +42,43 @@ function matchRule(window) {
 const startInTrayGraceMs = 10000;
 const startingInTray = {};
 
+// Windows starting in the tray are made transparent until the grace period ends or the user shows them:
+// otherwise the open animation, the minimize animation and every time the application shows itself
+// again are seen as flashes. Values are the opacity to restore.
+const transparentWhileStarting = {};
+
+function hideWhileStarting(window) {
+    if (!(window.internalId in transparentWhileStarting)) {
+        transparentWhileStarting[window.internalId] = window.opacity;
+    }
+    window.opacity = 0;
+    startInTrayTimer.start();
+}
+
+function restoreOpacity(window) {
+    const id = window.internalId;
+    if (!(id in transparentWhileStarting)) return;
+    debug(`${window.resourceClass}: opacity restored`);
+    window.opacity = transparentWhileStarting[id];
+    delete transparentWhileStarting[id];
+}
+
+// Called every second while some window is transparent: grace period over, show it again
+// (it is normally minimized in the tray by then, so nothing is seen)
+function checkStartingInTray() {
+    // keys are internalId strings, getWindow() compares the QUuid itself: go through the windows
+    const seen = {};
+    for (const window of Workspace.windows) {
+        if (!(window.internalId in transparentWhileStarting)) continue;
+        seen[window.internalId] = true;
+        if (!isStartingInTray(window)) restoreOpacity(window);
+    }
+    for (const id of Object.keys(transparentWhileStarting)) {
+        if (!seen[id]) delete transparentWhileStarting[id]; // window gone
+    }
+    if (Object.keys(transparentWhileStarting).length === 0) startInTrayTimer.stop();
+}
+
 function isStartingInTray(window) {
     const until = startingInTray[window.internalId];
     if (until === undefined) return false;
@@ -135,6 +172,7 @@ function keepInTray(window) {
 }
 
 function teardown(window) {
+    restoreOpacity(window);
     delete startingInTray[window.internalId];
     delete mainWindows[window.internalId];
     delete hiddenInTray[window.internalId];
@@ -230,6 +268,7 @@ function toggleShowHide(windowId) {
     if (!window) return;
     // the user asked for the window, stop holding it in the tray
     delete startingInTray[windowId];
+    restoreOpacity(window);
 
     window.minimized = !window.minimized;
     if (!window.minimized) Workspace.activeWindow = window;
@@ -314,6 +353,7 @@ function unpinIcon(windowId) {
     const window = getWindow(windowId);
     if (!window) return;
     delete startingInTray[windowId];
+    restoreOpacity(window);
     delete hiddenInTray[windowId];
     setMinimize(false, window);
     setSkip(false, window);
@@ -421,6 +461,7 @@ function setupAutoHide(window) {
     const rule = matchRule(window);
     if (rule && rule.startInTray && isMainWindow(window)) {
         startingInTray[window.internalId] = Date.now() + startInTrayGraceMs;
+        hideWhileStarting(window);
         sendToTray(window);
     }
 }
