@@ -3,6 +3,8 @@
 > [!NOTE]
 > This is a fork of [**kwin-minimize2tray**](https://github.com/luisbocanegra/kwin-minimize2tray) by Luis Bocanegra.
 > If you find it useful, please [**support the original author**](https://github.com/sponsors/luisbocanegra).
+>
+> The changes of this fork were developed with the help of an LLM (Claude).
 
 A KWin script for KDE Plasma 6 that sends windows to the system tray, hiding them from the taskbar, the task switcher (Alt+Tab) and the pager. Clicking the tray icon shows the window again.
 
