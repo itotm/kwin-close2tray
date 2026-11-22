@@ -1,10 +1,9 @@
 #!/bin/sh
 # Build the RPM in a clean Fedora container.
-#   ./packaging/build-rpm.sh [fedora release]   (default: 44)
-# The package built on the oldest supported release also installs on newer ones.
+#   ./packaging/build-rpm.sh [fedora release]   (default: 45)
 set -eu
 
-release=${1:-44}
+release=${1:-45}
 root=$(cd "$(dirname "$0")/.." && pwd)
 spec="$root/packaging/kwin-close2tray.spec"
 

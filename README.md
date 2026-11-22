@@ -26,7 +26,7 @@ A KWin script for KDE Plasma 6 that sends windows to the system tray, hiding the
 Build an RPM in a clean Fedora container (needs `podman`):
 
 ```sh
-./packaging/build-rpm.sh      # builds on Fedora 44, the package also installs on Fedora 45
+./packaging/build-rpm.sh      # builds on Fedora 45
 ```
 
 The package lands in `dist/`. Install it with `sudo dnf install ./dist/kwin-close2tray-*.x86_64.rpm`, or with `rpm-ostree install` / your image's Containerfile on atomic desktops.
